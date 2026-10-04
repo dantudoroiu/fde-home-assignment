@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Brightdesk Triage{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <style>
+    :root { --pico-font-size: 15px; }
+    .badge { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .8rem; font-weight: 600; white-space: nowrap; }
+    .s-needs_review { background: #fde68a; color: #78350f; }
+    .s-ready { background: #bbf7d0; color: #14532d; }
+    .s-ai_unavailable { background: #fecaca; color: #7f1d1d; }
+    .s-processing, .s-received { background: #e0e7ff; color: #312e81; }
+    .s-done { background: #e5e7eb; color: #374151; }
+    .p-P1 { background: #dc2626; color: white; }
+    .p-P2 { background: #f97316; color: white; }
+    .p-P3 { background: #3b82f6; color: white; }
+    .p-P4 { background: #9ca3af; color: white; }
+    .reason { background: #fef3c7; color: #92400e; margin: 0 .25rem .25rem 0; }
+    .flag { background: #e5e7eb; color: #374151; margin: 0 .25rem .25rem 0; }
+    .muted { color: var(--pico-muted-color); font-size: .85rem; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+    pre.ticket { white-space: pre-wrap; font-family: inherit; }
+    table td, table th { vertical-align: top; }
+    textarea.reply { min-height: 16rem; font-family: inherit; }
+    nav { margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <nav>
+      <ul><li><strong>Brightdesk Triage</strong></li></ul>
+      <ul>
+        <li><a href="/">Queue</a></li>
+        <li><a href="/tickets/new">New ticket</a></li>
+        <li><a href="/metrics">Metrics</a></li>
+      </ul>
+    </nav>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

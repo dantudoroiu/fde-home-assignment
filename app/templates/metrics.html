@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Metrics · Brightdesk Triage{% endblock %}
+{% block content %}
+<h2>Operational metrics</h2>
+<p class="muted">Computed from the database (same data as <a href="/api/metrics">/api/metrics</a>).</p>
+
+<div class="grid-2">
+  <article>
+    <header><strong>Tickets</strong></header>
+    <p>Total: {{ m.tickets.total }}</p>
+    {% for s, n in m.tickets.by_status.items() %}<span class="badge s-{{ s }}">{{ s.replace('_', ' ') }}: {{ n }}</span> {% endfor %}
+    <p style="margin-top: 1rem">AI unavailable rate: {{ m.ai_unavailable_rate if m.ai_unavailable_rate is not none else '–' }}<br>
+    Pipeline latency p50 / p95: {{ m.pipeline_latency_ms.p50 or '–' }} / {{ m.pipeline_latency_ms.p95 or '–' }} ms</p>
+  </article>
+  <article>
+    <header><strong>Agent feedback (quality signal)</strong></header>
+    <p>Reviewed: {{ m.agent_feedback.total }} · actions: {{ m.agent_feedback.actions }}</p>
+    <p>Draft accepted unchanged: {{ m.agent_feedback.draft_accept_rate if m.agent_feedback.draft_accept_rate is not none else '–' }}<br>
+    Avg edit ratio: {{ m.agent_feedback.avg_edit_ratio if m.agent_feedback.avg_edit_ratio is not none else '–' }}<br>
+    Category agreement: {{ m.agent_feedback.category_agreement if m.agent_feedback.category_agreement is not none else '–' }}<br>
+    Priority agreement: {{ m.agent_feedback.priority_agreement if m.agent_feedback.priority_agreement is not none else '–' }}</p>
+  </article>
+</div>
+
+<article>
+  <header><strong>LLM usage</strong> · {{ m.llm.total_calls }} calls · ${{ m.llm.total_cost_usd }} total · ${{ m.llm.cost_per_processed_ticket_usd or 0 }} per processed ticket</header>
+  <table>
+    <thead><tr><th>Step</th><th>Calls</th><th>Outcomes</th><th>p50 / p95 latency</th><th>Avg tokens in / out</th><th>Cache read tokens</th><th>Cost</th></tr></thead>
+    {% for step, s in m.llm.by_step.items() %}
+    <tr>
+      <td>{{ step }}</td><td>{{ s.calls }}</td><td>{{ s.outcomes }}</td>
+      <td>{{ s.latency_ms_p50 or '–' }} / {{ s.latency_ms_p95 or '–' }} ms</td>
+      <td>{{ s.avg_input_tokens or '–' }} / {{ s.avg_output_tokens or '–' }}</td>
+      <td>{{ s.cache_read_tokens }}</td><td>${{ s.cost_usd }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</article>
+{% endblock %}

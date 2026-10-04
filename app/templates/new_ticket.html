@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>New ticket</h2>
+<p class="muted">Simulates a ticket arriving from email or the web form. In production this would be a helpdesk webhook calling <code>POST /api/tickets</code>.</p>
+{% if errors %}
+<article style="border-left: 4px solid #dc2626">
+  {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+</article>
+{% endif %}
+<form method="post" action="/tickets">
+  <label>Customer email <input name="customer_email" type="email" required value="{{ form.customer_email or '' }}"></label>
+  <label>Subject <input name="subject" required maxlength="200" value="{{ form.subject or '' }}"></label>
+  <label>Message <textarea name="body" rows="10" required maxlength="8000">{{ form.body or '' }}</textarea></label>
+  <button type="submit">Submit ticket</button>
+</form>
+{% endblock %}

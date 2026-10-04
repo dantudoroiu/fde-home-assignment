@@ -1,0 +1,18 @@
+{% for t in tickets %}
+<tr>
+  <td><a href="/tickets/{{ t.id }}">{{ t.id }}</a></td>
+  <td><span class="badge s-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span></td>
+  <td>{% if t.triage %}<span class="badge p-{{ t.triage.priority }}">{{ t.triage.priority }}</span>{% endif %}</td>
+  <td>{{ t.triage.category.replace('_', ' ') if t.triage else '' }}</td>
+  <td>
+    <a href="/tickets/{{ t.id }}">{{ t.subject }}</a>
+    {% if t.triage %}<br><span class="muted">{{ t.triage.summary }}</span>{% endif %}
+  </td>
+  <td>
+    {% for r in t.review_reasons or [] %}<span class="badge reason">{{ r }}</span>{% endfor %}
+    {% if t.error %}<span class="badge s-ai_unavailable">{{ t.error }}</span>{% endif %}
+  </td>
+</tr>
+{% else %}
+<tr><td colspan="6" class="muted">No tickets yet. Create one or run <code>python scripts/seed.py</code>.</td></tr>
+{% endfor %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Support queue</h2>
+<p class="muted">Tickets that need a human come first, then by AI priority. The list refreshes every 3 seconds.</p>
+<table>
+  <thead>
+    <tr><th>#</th><th>Status</th><th>Priority</th><th>Category</th><th>Subject / AI summary</th><th>Review reasons</th></tr>
+  </thead>
+  <tbody hx-get="/partials/queue" hx-trigger="every 3s" hx-swap="innerHTML">
+    {% include "_queue_rows.html" %}
+  </tbody>
+</table>
+{% endblock %}

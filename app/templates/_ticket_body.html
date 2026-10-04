@@ -1,0 +1,110 @@
+<div id="ticket-body"
+  {% if t.status in ('received', 'processing') %}hx-get="/partials/tickets/{{ t.id }}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+
+<h2>#{{ t.id }} · {{ t.subject }}</h2>
+<p>
+  <span class="badge s-{{ t.status }}">{{ t.status.replace('_', ' ') }}</span>
+  <span class="muted">from {{ t.customer_email }} · received {{ t.created_at }}
+  {% if t.pipeline_ms %} · AI pipeline {{ (t.pipeline_ms / 1000) | round(1) }}s · ${{ '%.4f' % total_cost }}{% endif %}</span>
+</p>
+
+{% if t.status in ('received', 'processing') %}
+  <article aria-busy="true">AI triage in progress…</article>
+{% endif %}
+
+{% if t.status == 'ai_unavailable' %}
+<article style="border-left: 4px solid #dc2626">
+  <strong>AI assistance unavailable</strong> ({{ t.error }}). Handle this ticket manually; nothing is lost.
+  <form method="post" action="/tickets/{{ t.id }}/reprocess" style="margin-top: .5rem"><button class="secondary outline">Retry AI</button></form>
+</article>
+{% endif %}
+
+{% if t.review_reasons %}
+<article style="border-left: 4px solid #f59e0b">
+  <strong>Needs human review:</strong>
+  {% for r in t.review_reasons %}<span class="badge reason">{{ r }}</span>{% endfor %}
+</article>
+{% endif %}
+
+<div class="grid-2">
+  <section>
+    <h4>Customer message</h4>
+    <pre class="ticket">{{ t.body }}</pre>
+
+    {% if t.triage %}
+    <h4>AI triage</h4>
+    <table>
+      <tr><th>Category</th><td>{{ t.triage.category.replace('_', ' ') }}</td></tr>
+      <tr><th>Priority</th><td><span class="badge p-{{ t.triage.priority }}">{{ t.triage.priority }}</span></td></tr>
+      <tr><th>Sentiment</th><td>{{ t.triage.sentiment }}</td></tr>
+      <tr><th>Confidence</th><td>{{ (t.triage.confidence * 100) | round | int }}%</td></tr>
+      <tr><th>Summary</th><td>{{ t.triage.summary }}</td></tr>
+      {% if t.triage.risk_signals %}<tr><th>Risk signals</th><td>{{ t.triage.risk_signals | join(', ') }}</td></tr>{% endif %}
+      {% if t.triage.entities %}<tr><th>Entities</th><td>{% for e in t.triage.entities %}<div>{{ e.type }}: <code>{{ e.value }}</code></div>{% endfor %}</td></tr>{% endif %}
+    </table>
+    {% endif %}
+
+    {% if t.flags %}<p>{% for f in t.flags %}<span class="badge flag">{{ f }}</span>{% endfor %}</p>{% endif %}
+
+    {% if articles %}
+    <h4>{{ 'Articles used by the draft' if grounding == 'full_context' else 'Retrieved articles' }}</h4>
+    {% for a in articles %}
+    <details><summary>{{ a.id }}: {{ a.title }}</summary><pre class="ticket muted">{{ a.body }}</pre></details>
+    {% endfor %}
+    {% endif %}
+  </section>
+
+  <section>
+    {% if t.status == 'done' %}
+      <h4>Resolved</h4>
+      <p class="muted">Agent feedback recorded. See <a href="/metrics">metrics</a>.</p>
+    {% elif t.status in ('ready', 'needs_review', 'ai_unavailable') %}
+      <h4>Reply {% if t.draft %}<span class="muted">(AI draft, edit before sending)</span>{% endif %}</h4>
+      {% if t.draft and t.draft.cited_article_ids %}
+        <p class="muted">Grounded in: {{ t.draft.cited_article_ids | join(', ') }}</p>
+      {% endif %}
+      {% if t.draft and t.draft.questions_for_customer %}
+        <p class="muted">Still needed from customer: {{ t.draft.questions_for_customer | join('; ') }}</p>
+      {% endif %}
+      <form method="post" action="/tickets/{{ t.id }}/feedback">
+        <textarea class="reply" name="final_reply">{{ t.draft.reply if t.draft else '' }}</textarea>
+        {% if t.triage %}
+        <div class="grid-2">
+          <label>Category
+            <select name="corrected_category">
+              {% for c in categories %}<option value="{{ c }}" {% if c == t.triage.category %}selected{% endif %}>{{ c.replace('_', ' ') }}</option>{% endfor %}
+            </select>
+          </label>
+          <label>Priority
+            <select name="corrected_priority">
+              {% for p in priorities %}<option value="{{ p }}" {% if p == t.triage.priority %}selected{% endif %}>{{ p }}</option>{% endfor %}
+            </select>
+          </label>
+        </div>
+        {% endif %}
+        <div role="group">
+          <button name="action" value="accepted">Send reply</button>
+          {% if t.draft %}<button name="action" value="rejected" class="secondary">Reject draft &amp; reply manually</button>{% endif %}
+        </div>
+        <p class="muted">"Send reply" records the reply as accepted (or edited, if you changed it). In this demo nothing is actually emailed.</p>
+      </form>
+    {% endif %}
+  </section>
+</div>
+
+{% if calls %}
+<details>
+  <summary class="muted">LLM calls ({{ calls | length }})</summary>
+  <table>
+    <thead><tr><th>Step</th><th>Model</th><th>Attempt</th><th>Outcome</th><th>Latency</th><th>Tokens in/out (cache read)</th><th>Cost</th></tr></thead>
+    {% for c in calls %}
+    <tr>
+      <td>{{ c.step }}</td><td>{{ c.model }}</td><td>{{ c.attempt }}</td><td>{{ c.outcome }}</td>
+      <td>{{ c.latency_ms }} ms</td><td>{{ c.input_tokens }}/{{ c.output_tokens }} ({{ c.cache_read_tokens }})</td>
+      <td>{% if c.cost_usd is not none %}${{ '%.5f' % c.cost_usd }}{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</details>
+{% endif %}
+</div>
