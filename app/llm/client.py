@@ -7,6 +7,7 @@ accounting, and the audit trail.
 """
 
 import re
+import threading
 import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Protocol, TypeVar
@@ -95,6 +96,8 @@ class AnthropicClient:
     def __init__(self, settings: Settings, sink: CallSink = log_sink, sdk: Any = None):
         self._settings = settings
         self._sink = sink
+        # Bounds in-flight API calls (including SDK retries) across all background-task threads.
+        self._slots = threading.BoundedSemaphore(settings.llm_max_concurrency)
         self._sdk = sdk or anthropic.Anthropic(
             api_key=settings.anthropic_api_key or None,
             timeout=settings.llm_timeout_seconds,
@@ -119,9 +122,11 @@ class AnthropicClient:
                 ticket_id=ticket_id, step=step, model=model, prompt_version=PROMPT_VERSION,
                 attempt=attempt, outcome="ok", latency_ms=0,
             )
-            started = time.perf_counter()
             try:
-                response = self._sdk.beta.messages.create(**request)
+                # Wait for a free slot first, so latency_ms measures the API call, not the queue.
+                with self._slots:
+                    started = time.perf_counter()
+                    response = self._sdk.beta.messages.create(**request)
             except Exception as exc:  # mapped to LLMError below; never leaks SDK types
                 record.latency_ms = _elapsed_ms(started)
                 error = _map_sdk_error(exc)
@@ -239,6 +244,7 @@ class MockClient:
         "legal_threat": ("lawyer", "legal action", "attorney", "regulator", "sue"),
         "churn_risk": ("cancel", "switching to", "competitor", "unacceptable"),
         "prompt_injection": ("ignore your instructions", "ignore previous", "system prompt"),
+        "account_ownership_change": ("become admin", "make me admin", "transfer ownership", "account owner"),
     }
 
     def __init__(self, sink: CallSink = log_sink):

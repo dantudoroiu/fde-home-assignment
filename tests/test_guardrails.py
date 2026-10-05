@@ -29,6 +29,13 @@ def test_prompt_injection_signal_triggers_review():
     assert "risk:prompt_injection" in review_reasons(triage, [], THRESHOLD)
 
 
+def test_account_ownership_change_triggers_review_even_when_calm_and_confident():
+    # Regression: "our admin left, make me admin" was calm, P2 and confident, so nothing fired.
+    triage = make_triage(category="account_access", priority="P3", confidence=0.95,
+                         risk_signals=["account_ownership_change"])
+    assert review_reasons(triage, [], THRESHOLD) == ["risk:account_ownership_change"]
+
+
 def test_only_review_flags_force_review():
     reasons = review_reasons(make_triage(), ["pii_redacted", "mentions_refund_or_commitment"], THRESHOLD)
     assert reasons == ["mentions_refund_or_commitment"]

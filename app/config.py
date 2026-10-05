@@ -37,6 +37,9 @@ class Settings(BaseSettings):
 
     llm_timeout_seconds: float = 30.0
     llm_max_retries: int = 2  # SDK-level retries for 408/409/429/5xx and connection errors
+    # Cap on simultaneous API calls per process. Background tasks run in a threadpool, so a burst of
+    # tickets would otherwise fire dozens of calls at once and hit the org's concurrency limit (429).
+    llm_max_concurrency: int = 4
     refusal_fallback: bool = True  # server-side refusal fallback on models that support it
 
     database_path: Path = ROOT_DIR / "triage.db"

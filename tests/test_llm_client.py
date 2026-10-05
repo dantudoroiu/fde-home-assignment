@@ -1,6 +1,9 @@
 """AnthropicClient behaviour with a fake SDK: validation retry, stop reasons, error mapping, usage/cost."""
 
 import json
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 
 import anthropic
@@ -123,6 +126,35 @@ def test_sdk_errors_mapped_to_llm_error_kinds(settings, error, kind):
         _generate(client)
     assert exc.value.kind == kind
     assert records[0].outcome == kind
+
+
+def test_concurrent_calls_are_capped(settings):
+    # Regression: a burst of 40 seeded tickets fired 40 simultaneous calls and hit the org's
+    # concurrency limit (429). Calls beyond llm_max_concurrency must wait instead.
+    settings.llm_max_concurrency = 2
+    in_flight = peak = 0
+    lock = threading.Lock()
+
+    class SlowSDK:
+        def __init__(self):
+            self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
+
+        def _create(self, **request):
+            nonlocal in_flight, peak
+            with lock:
+                in_flight += 1
+                peak = max(peak, in_flight)
+            time.sleep(0.05)
+            with lock:
+                in_flight -= 1
+            return _response()
+
+    client = AnthropicClient(settings, sink=lambda r: None, sdk=SlowSDK())
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(lambda _: _generate(client), range(8)))
+
+    assert len(results) == 8
+    assert peak == 2
 
 
 def test_sonnet_requests_use_refusal_fallback(settings):

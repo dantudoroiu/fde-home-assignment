@@ -8,6 +8,7 @@ or prompt versions before changing production config.
     python scripts/run_eval.py --triage-model claude-sonnet-5-5 # compare a different triage model
     python scripts/run_eval.py --no-draft                       # triage only (cheaper, faster)
     python scripts/run_eval.py --mode mock                      # smoke-test the script, no API key
+    python scripts/run_eval.py --data data/holdout_tickets.jsonl  # held-out set (never tune on it)
 
 Live mode calls the real API and costs money (roughly a few cents for the 40 tickets).
 """
@@ -27,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 from app.config import Settings  # noqa: E402
 from app.db import Database  # noqa: E402
 from app.llm.client import AnthropicClient, CallRecord, MockClient  # noqa: E402
+from app.llm.prompts import PROMPT_VERSION  # noqa: E402
 from app.observability import configure_logging, percentile  # noqa: E402
 from app.pipeline.orchestrator import Analysis, Pipeline  # noqa: E402
 from app.pipeline.retrieval import KnowledgeBase  # noqa: E402
@@ -41,6 +43,8 @@ def main() -> None:
     parser.add_argument("--draft-model", default=None)
     parser.add_argument("--grounding", choices=["full_context", "bm25"], default=None)
     parser.add_argument("--no-draft", action="store_true")
+    parser.add_argument("--data", default="data/sample_tickets.jsonl",
+                        help="labeled tickets; data/holdout_tickets.jsonl is never used for tuning")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
@@ -67,7 +71,8 @@ def main() -> None:
         llm = MockClient(sink=sink)
 
     pipeline = Pipeline(Database(":memory:"), llm, KnowledgeBase.from_dir(settings.kb_dir), settings)
-    tickets = [json.loads(l) for l in (ROOT / "data" / "sample_tickets.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    data_path = ROOT / args.data
+    tickets = [json.loads(l) for l in data_path.read_text(encoding="utf-8").splitlines() if l.strip()]
     tickets = tickets[: args.limit]
 
     print(f"Evaluating {len(tickets)} tickets | mode={settings.llm_mode} triage={settings.triage_model} "
@@ -86,7 +91,7 @@ def main() -> None:
 
     out_dir = ROOT / "eval_results"
     out_dir.mkdir(exist_ok=True)
-    out = out_dir / f"{datetime.now():%Y%m%d-%H%M%S}-{settings.llm_mode}-{settings.triage_model}.json"
+    out = out_dir / f"{datetime.now():%Y%m%d-%H%M%S}-{settings.llm_mode}-{data_path.stem}.json"
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(f"\nFull results: {out.relative_to(ROOT)}")
 
@@ -156,6 +161,7 @@ def build_report(
             "mode": settings.llm_mode, "triage_model": settings.triage_model,
             "draft_model": None if args.no_draft else settings.draft_model,
             "draft_effort": settings.draft_effort, "grounding": grounding,
+            "data": args.data, "prompt_version": PROMPT_VERSION,
         },
         "summary": {
             "tickets": len(results), "failures": failures,

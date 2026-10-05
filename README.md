@@ -30,7 +30,9 @@ copy .env.example .env                 # macOS/Linux: cp .env.example .env
 > **Windows notes:** if `Activate.ps1` is blocked, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
 > once, or skip activation and use `.\.venv\Scripts\python` instead of `python`. Commands use
 > `python -m uvicorn` / `python -m pytest` because Smart App Control can block the unsigned
-> `uvicorn.exe` / `pytest.exe` launchers that pip generates.
+> `uvicorn.exe` / `pytest.exe` launchers that pip generates. Clone into a short path (e.g. `C:\dev\`):
+> the Anthropic SDK has deeply nested files, and `pip install` fails partway (leaving a broken install)
+> when paths exceed Windows' 260-character limit, unless long paths are enabled.
 
 **Option A: no API key (mock mode, the default).** A deterministic keyword-based fake model stands in
 for Claude, so the whole workflow and UI can be explored offline.
@@ -54,7 +56,7 @@ Open http://localhost:8000:
 Other commands:
 
 ```powershell
-python -m pytest                              # 63 tests, no network, a few seconds
+python -m pytest                              # 65 tests, no network, a few seconds
 python scripts/run_eval.py                    # accuracy / grounding / latency / cost on the labeled set (live: ~$0.30 per run)
 python scripts/run_eval.py --grounding bm25   # compare grounding strategies on the same tickets
 python scripts/run_eval.py --triage-model claude-sonnet-5-5 --no-draft   # compare triage models
@@ -118,6 +120,7 @@ app/
   api/routes.py        JSON API        web/routes.py + templates/   agent UI (Jinja2 + HTMX)
 kb/                    knowledge-base articles (fictional)
 data/sample_tickets.jsonl   40 labeled tickets (seed data + eval gold set)
+data/holdout_tickets.jsonl  12 held-out labeled tickets (never used for prompt tuning)
 scripts/               seed.py, run_eval.py
 tests/                 pytest suite (MockClient / fake SDK only)
 ```
@@ -203,9 +206,12 @@ Live runs on the 40 labeled tickets (prompt version `2026-10-04.1`), plus the mo
 | Configuration | Category acc. | Priority acc. | Review recall | Review precision | Grounding recall | Citation precision | Draft p50 / p95 | $ / ticket |
 |---|---|---|---|---|---|---|---|---|
 | Keyword rules (mock mode) | 0.70 | 0.45 | 0.82 | 0.64 | n/a | n/a | n/a | $0 |
-| Haiku + Sonnet, **full KB** (default) | 0.78 | 0.70 | 0.94 | 0.89 | **1.00** | 0.73 | 4.3 / 5.5 s | **$0.0068** |
-| Haiku + Sonnet, BM25 top 3 | 0.80 | 0.65 | 0.94 | 0.84 | 0.94 | **0.84** | 4.3 / 5.2 s | $0.0076 |
+| Haiku + Sonnet, **full KB** (default) | 0.78 | 0.70 | 0.95 | 1.00 | **1.00** | 0.73 | 4.3 / 5.5 s | **$0.0068** |
+| Haiku + Sonnet, BM25 top 3 | 0.80 | 0.65 | 0.89 | 0.89 | 0.94 | **0.84** | 4.3 / 5.2 s | $0.0076 |
 
+- Review metrics use the reviewed labels. Label review changed two tickets to `should_review: true`
+  (T33, a cancellation; T35, an unexplained server error), and the metrics were recomputed from the
+  saved predictions in `eval_results/`.
 - *Grounding recall:* the draft cited an expected article. *Citation precision:* the share of cited
   articles that were expected.
 - How to read it:
@@ -218,11 +224,42 @@ Live runs on the 40 labeled tickets (prompt version `2026-10-04.1`), plus the mo
     labels: citing webhooks for a Slack-alerts feature request is a reasonable workaround.
 - **Triage is identical code in both runs.** The 2-point difference in category accuracy is
   run-to-run noise, so differences that small on 40 tickets are not meaningful.
-- **Most common triage error:** priority one level too high (P3 tickets rated P2). Priority within one
-  level is 100%. The next prompt iteration would sharpen the P2/P3 rubric, measured on a held-out set
-  so as not to overfit these 40 tickets.
 - The keyword baseline gets obvious cases right, but misses mixed, vague and non-English tickets, and
   can't write replies.
+
+### Prompt iteration: fixing priority over-rating (measured on a held-out set)
+Two runs of prompt `2026-10-04.1` showed the same bias: **every** priority error was one level too
+high, mostly P3 → P2, so the cause was the rubric, not noise. Tickets T37 "our admin left, make me
+admin" (possible social engineering) also slipped through review because nothing in the rules covered
+it.
+
+Changes in prompt `2026-10-05.2`:
+- **Priority rubric rewritten** around business impact:
+  - P3 is the default, and how-to questions stay P3 even when the user is blocked
+  - urgency words don't raise priority
+  - P2 means several users blocked or an incorrect charge
+  - P1 explicitly includes a whole company locked out and any *suspected* compromise
+- **New risk signal `account_ownership_change`,** which always forces review.
+
+To avoid overfitting the 40 tickets, 12 **new held-out tickets** (`data/holdout_tickets.jsonl`) were
+written and measured with the old prompt *before* changing it, and are never used for tuning.
+
+| | Sample set (40), before → after | **Held-out set (12), before → after** |
+|---|---|---|
+| Priority accuracy | 0.60 → 0.78 | **0.58 → 0.92** |
+| Category accuracy | 0.80 → 0.80 | 0.67 → 0.92 |
+| Review recall | 0.95 → **1.00** | 0.67 → 0.83 |
+| Review precision | 0.95 → 0.90 | 1.00 → 1.00 |
+| $ / ticket | $0.0076 → $0.0071 | $0.0089 → $0.0072 |
+
+- **It went wrong once, and that was caught.** The first version of the rubric (`2026-10-05.1`) dropped
+  two real P1s, a company-wide SSO lockout and a suspicious login, to P2 because of the "when torn,
+  choose lower" rule. `2026-10-05.2` limits that rule to P2-vs-P3 and spells out P1.
+- **Remaining priority errors on risky tickets now err upward** (a vulnerability report or a GDPR
+  request rated P1), which is the safe direction for queue ordering.
+- **Still missed: H05, a disputed invoice ("charged for 48 seats, we have 30").** It's money owed, but
+  the draft didn't promise a refund, so no rule fired. The natural fix is a `billing_dispute` risk
+  signal, deliberately left for a separate, measured iteration.
 
 ---
 
@@ -231,6 +268,7 @@ Live runs on the 40 labeled tickets (prompt version `2026-10-04.1`), plus the mo
 | Failure | Handling | Where |
 |---|---|---|
 | API timeout, 429, 5xx, connection error | SDK retries (`LLM_MAX_RETRIES`, default 2) with an explicit timeout, then mapped to a typed `LLMError` | `llm/client.py` |
+| Burst of tickets exceeds the org's concurrency limit | At most `LLM_MAX_CONCURRENCY` (default 4) calls in flight; the rest wait for a slot. Found when seeding 40 tickets on a new account: 4 tickets hit 429 *"concurrent requests exceeded"* and correctly landed in `ai_unavailable`, and they recovered with "Retry AI" after the fix | `llm/client.py` |
 | Triage fails | Ticket goes to `ai_unavailable` and is handled manually exactly as before. "Retry AI" button. | `orchestrator.py` |
 | Draft fails | Triage is kept (the queue is still sorted); `needs_review` with `draft_unavailable` | `orchestrator.py` |
 | Output fails schema or constraints | One fresh retry, then `invalid_output` (degrades as above) | `llm/client.py` |
@@ -282,7 +320,9 @@ intake is cheap and the model is the real limit.
 
 **Scaling path:**
 - **Queue and workers:** a queue (SQS, Redis, Celery) with a worker pool sized to the Anthropic rate
-  limits. Retries with backoff and a dead-letter queue replace in-process background tasks.
+  limits. Retries with backoff and a dead-letter queue replace in-process background tasks. Today's
+  per-process cap (`LLM_MAX_CONCURRENCY`) doesn't coordinate across processes, so with several API
+  instances the limit has to move to the queue: total workers × calls per worker ≤ the org limit.
 - **Database:** Postgres instead of SQLite. The repository layer is the only code that changes.
 - **API layer:** stateless and horizontally scalable.
 - **Backlogs:** the **Message Batches API** for backlogs and nightly re-triage after a prompt change,
@@ -296,7 +336,7 @@ intake is cheap and the model is the real limit.
 
 ## Testing
 
-`pytest` runs 63 tests in about 2 s with **no network access**:
+`pytest` runs 65 tests in about 2 s with **no network access**:
 
 | File | What it proves |
 |---|---|

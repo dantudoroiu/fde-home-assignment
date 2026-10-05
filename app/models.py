@@ -28,6 +28,7 @@ RiskSignal = Literal[
     "legal_threat",
     "churn_risk",
     "prompt_injection",
+    "account_ownership_change",  # possible social engineering: authority must be verified
 ]
 EntityType = Literal["account_id", "invoice_id", "email", "error_code", "product_area", "other"]
 
