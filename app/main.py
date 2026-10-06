@@ -1,3 +1,4 @@
+import threading
 import uuid
 from contextlib import asynccontextmanager
 
@@ -44,6 +45,14 @@ def create_app(settings: Settings | None = None, llm: LLMClient | None = None) -
             "app_started", llm_mode=settings.llm_mode, triage_model=settings.triage_model,
             draft_model=settings.draft_model, kb_articles=len(kb.articles),
         )
+        # Re-run tickets orphaned by a previous crash or restart. The list is taken here, before the
+        # server accepts requests, so a newly arriving ticket can't be picked up twice. Processing
+        # runs in a thread so a backlog doesn't block startup; kept on app.state so tests can wait.
+        orphaned = app.state.pipeline.find_orphaned()
+        app.state.recovery = threading.Thread(
+            target=app.state.pipeline.reprocess_all, args=(orphaned,), name="recover-orphaned", daemon=True
+        )
+        app.state.recovery.start()
         yield
 
     app = FastAPI(title="Brightdesk Ticket Triage", lifespan=lifespan)

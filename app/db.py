@@ -169,6 +169,14 @@ class Database:
         with self._connect() as conn:
             return [dict(r) for r in conn.execute("SELECT * FROM feedback ORDER BY id").fetchall()]
 
+    def ticket_ids_with_status(self, statuses: tuple[str, ...]) -> list[int]:
+        placeholders = ", ".join("?" for _ in statuses)
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT id FROM tickets WHERE status IN ({placeholders}) ORDER BY id", statuses
+            ).fetchall()
+        return [r["id"] for r in rows]
+
     def status_counts(self) -> dict[str, int]:
         with self._connect() as conn:
             rows = conn.execute("SELECT status, COUNT(*) AS n FROM tickets GROUP BY status").fetchall()

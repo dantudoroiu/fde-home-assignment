@@ -56,7 +56,7 @@ Open http://localhost:8000:
 Other commands:
 
 ```powershell
-python -m pytest                              # 65 tests, no network, a few seconds
+python -m pytest                              # 67 tests, no network, a few seconds
 python scripts/run_eval.py                    # accuracy / grounding / latency / cost on the labeled set (live: ~$0.30 per run)
 python scripts/run_eval.py --grounding bm25   # compare grounding strategies on the same tickets
 python scripts/run_eval.py --triage-model claude-sonnet-5-5 --no-draft   # compare triage models
@@ -278,6 +278,7 @@ written and measured with the old prompt *before* changing it, and are never use
 | Promises of refunds, credits or dates | Regex flag → forced review (the prompt also forbids them) | `guardrails.py` |
 | Card numbers or passwords in the ticket | Luhn-checked card and credential redaction before the model call | `guardrails.py` |
 | Bug in the pipeline | Caught at the top level; the ticket is never stuck in `processing` | `orchestrator.py` |
+| Server crashes or restarts after the `202` but before the pipeline finishes | The ticket is already saved, but the background task is lost (it lives only in memory). At startup, tickets left in `received`/`processing` are found *before* requests are accepted (so a new ticket can't be processed twice) and re-run in a background thread; a warning `orphaned_tickets_found` is logged | `main.py`, `orchestrator.py` |
 | Empty or oversized input | `422` with a clear message; no silent truncation | `models.py` |
 | Bad API key or model name | Mapped to `config` (non-retryable), visible in logs; app refuses to start in live mode without a key | `client.py`, `main.py` |
 
@@ -336,7 +337,7 @@ intake is cheap and the model is the real limit.
 
 ## Testing
 
-`pytest` runs 65 tests in about 2 s with **no network access**:
+`pytest` runs 67 tests in about 2 s with **no network access**:
 
 | File | What it proves |
 |---|---|
@@ -362,8 +363,10 @@ leaked API key, a card number and a password.
   secrets reach the model. This is not a DLP solution.
 - **The confidence score is self-reported** by the model and only roughly calibrated. The 0.7 threshold
   should be tuned on real data.
-- **Background tasks are in-process:** a restart during processing leaves a ticket in `processing`. In
-  production a queue fixes this; here "Retry AI" recovers it.
+- **Background tasks are in-process:** work is lost on a crash and only recovered at the *next startup*.
+  The recovery assumes a single server process: with several workers, one worker's startup would
+  re-run tickets another worker is still processing. In production a durable queue (SQS, Redis) with
+  acknowledgements replaces both the background tasks and this recovery step.
 - **No auth, no multi-tenancy, no rate limiting** on the API.
 - **Full-context grounding has a size ceiling:** past roughly 100 articles, or the
   `FULL_CONTEXT_MAX_TOKENS` budget, the prompt gets expensive on cache misses and the model's attention

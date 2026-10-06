@@ -59,6 +59,24 @@ class Pipeline:
         # Built once so every draft call sends a byte-identical system prompt (prompt-cache hits).
         self.draft_system = build_draft_system(kb.articles if self.grounding == "full_context" else None)
 
+    def find_orphaned(self) -> list[int]:
+        """Tickets whose background processing was lost (server stopped or crashed after the 202 but
+        before the pipeline finished). Background tasks live only in memory, so these would otherwise
+        sit in received/processing forever.
+
+        Call this at startup *before* the server accepts requests: in a single-process deployment no
+        pipeline can be running yet, so every ticket in these states is orphaned, and no new ticket
+        can be mistaken for one. With several workers this moves to a durable queue.
+        """
+        orphaned = self.db.ticket_ids_with_status(("received", "processing"))
+        if orphaned:
+            log.warning("orphaned_tickets_found", count=len(orphaned), ticket_ids=orphaned)
+        return orphaned
+
+    def reprocess_all(self, ticket_ids: list[int]) -> None:
+        for ticket_id in ticket_ids:
+            self.process(ticket_id)  # never raises: process() handles its own failures
+
     def process(self, ticket_id: int) -> None:
         """Background-task entry point: analyze a stored ticket and persist the result."""
         with structlog.contextvars.bound_contextvars(ticket_id=ticket_id):
