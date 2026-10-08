@@ -10,7 +10,7 @@ or prompt versions before changing production config.
     python scripts/run_eval.py --mode mock                      # smoke-test the script, no API key
     python scripts/run_eval.py --data data/holdout_tickets.jsonl  # held-out set (never tune on it)
 
-Live mode calls the real API and costs money (roughly a few cents for the 40 tickets).
+Live mode calls the real API and costs money (about $0.30 for the 40 tickets with drafts).
 """
 
 import argparse

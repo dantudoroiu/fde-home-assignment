@@ -1,0 +1,417 @@
+{
+  "config": {
+    "mode": "live",
+    "triage_model": "claude-haiku-4-5",
+    "draft_model": "claude-sonnet-5-5",
+    "draft_effort": "low",
+    "grounding": "full_context",
+    "data": "data/holdout_tickets.jsonl",
+    "prompt_version": "2026-10-05.2"
+  },
+  "summary": {
+    "tickets": 12,
+    "failures": 0,
+    "category_accuracy": 0.917,
+    "priority_accuracy": 0.917,
+    "priority_within_one": 1.0,
+    "review_recall": 0.833,
+    "review_precision": 1.0,
+    "review_confusion": {
+      "tp": 5,
+      "fp": 0,
+      "fn": 1,
+      "tn": 6
+    },
+    "grounding_recall": 0.889,
+    "citation_precision": 0.692,
+    "false_grounding_rate": 0.0,
+    "total_cost_usd": 0.0865,
+    "cost_per_ticket_usd": 0.00721,
+    "wall_clock_s": 20.1
+  },
+  "steps": {
+    "draft": {
+      "calls": 12,
+      "failed_attempts": 0,
+      "latency_ms_p50": 4743.0,
+      "latency_ms_p95": 6153.2,
+      "avg_input_tokens": 129,
+      "avg_output_tokens": 400,
+      "cache_hit_rate": 1.0,
+      "cost_usd": 0.0626
+    },
+    "triage": {
+      "calls": 12,
+      "failed_attempts": 0,
+      "latency_ms_p50": 1383.5,
+      "latency_ms_p95": 2075.0,
+      "avg_input_tokens": 1665,
+      "avg_output_tokens": 66,
+      "cache_hit_rate": 0.0,
+      "cost_usd": 0.024
+    }
+  },
+  "tickets": [
+    {
+      "id": "H01",
+      "subject": "Weekly export of a big table",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.8,
+      "articles": [
+        "KB-007",
+        "KB-008"
+      ],
+      "cited": [
+        "KB-007",
+        "KB-008"
+      ],
+      "expected_articles": [
+        "KB-007"
+      ],
+      "error": null
+    },
+    {
+      "id": "H02",
+      "subject": "Please make my colleague the account owner",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P2"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "risk:account_ownership_change",
+        "no_kb_citation"
+      ],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.95,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [
+        "KB-011"
+      ],
+      "error": null
+    },
+    {
+      "id": "H03",
+      "subject": "Nobody can save dashboards",
+      "category": [
+        "bug_report",
+        "bug_report"
+      ],
+      "priority": [
+        "P2",
+        "P2"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "risk:outage",
+        "no_kb_citation"
+      ],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.92,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "H04",
+      "subject": "2FA codes rejected",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.92,
+      "articles": [
+        "KB-003"
+      ],
+      "cited": [
+        "KB-003"
+      ],
+      "expected_articles": [
+        "KB-003"
+      ],
+      "error": null
+    },
+    {
+      "id": "H05",
+      "subject": "Wrong seat count on renewal",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P2",
+        "P2"
+      ],
+      "review": [
+        true,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.92,
+      "articles": [
+        "KB-011",
+        "KB-005",
+        "KB-006"
+      ],
+      "cited": [
+        "KB-011",
+        "KB-005",
+        "KB-006"
+      ],
+      "expected_articles": [
+        "KB-005",
+        "KB-011"
+      ],
+      "error": null
+    },
+    {
+      "id": "H06",
+      "subject": "Gantt charts",
+      "category": [
+        "feature_request",
+        "feature_request"
+      ],
+      "priority": [
+        "P4",
+        "P4"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.95,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "H07",
+      "subject": "URGENT!!! add a user",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-011",
+        "KB-005"
+      ],
+      "cited": [
+        "KB-011",
+        "KB-005"
+      ],
+      "expected_articles": [
+        "KB-011"
+      ],
+      "error": null
+    },
+    {
+      "id": "H08",
+      "subject": "403 from the Data API",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-008"
+      ],
+      "cited": [
+        "KB-008"
+      ],
+      "expected_articles": [
+        "KB-008"
+      ],
+      "error": null
+    },
+    {
+      "id": "H09",
+      "subject": "Someone changed our workspace overnight",
+      "category": [
+        "security",
+        "security"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "angry_customer",
+        "sensitive_category:security",
+        "risk:security_incident",
+        "risk:account_ownership_change"
+      ],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-013"
+      ],
+      "cited": [
+        "KB-013"
+      ],
+      "expected_articles": [
+        "KB-013"
+      ],
+      "error": null
+    },
+    {
+      "id": "H10",
+      "subject": "Delete our workspace and data",
+      "category": [
+        "data_privacy",
+        "data_privacy"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "sensitive_category:data_privacy"
+      ],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-012",
+        "KB-007"
+      ],
+      "cited": [
+        "KB-012",
+        "KB-007"
+      ],
+      "expected_articles": [
+        "KB-012"
+      ],
+      "error": null
+    },
+    {
+      "id": "H11",
+      "subject": "Dashboards very slow in our Singapore office",
+      "category": [
+        "bug_report",
+        "technical"
+      ],
+      "priority": [
+        "P2",
+        "P2"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "risk:outage"
+      ],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-010"
+      ],
+      "cited": [
+        "KB-010"
+      ],
+      "expected_articles": [
+        "KB-010"
+      ],
+      "error": null
+    },
+    {
+      "id": "H12",
+      "subject": "Thank you!",
+      "category": [
+        "other",
+        "other"
+      ],
+      "priority": [
+        "P4",
+        "P4"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.95,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    }
+  ]
+}

@@ -81,6 +81,15 @@ def test_invalid_tickets_rejected(client_factory, payload):
         assert client.post("/api/tickets", json=payload).status_code == 422
 
 
+def test_second_feedback_is_rejected_and_not_double_counted(client_factory):
+    llm = ScriptedClient(triage=make_triage(), draft=make_draft())
+    with client_factory(llm) as client:
+        tid = client.post("/api/tickets", json=TICKET).json()["id"]
+        assert client.post(f"/api/tickets/{tid}/feedback", json={"action": "rejected"}).status_code == 200
+        assert client.post(f"/api/tickets/{tid}/feedback", json={"action": "rejected"}).status_code == 409
+        assert client.get("/api/metrics").json()["agent_feedback"]["total"] == 1
+
+
 def test_feedback_on_unknown_ticket_404(client_factory):
     with client_factory(ScriptedClient()) as client:
         assert client.post("/api/tickets/999/feedback", json={"action": "rejected"}).status_code == 404

@@ -1,5 +1,7 @@
 # Brightdesk Ticket Triage: AI-assisted support workflow
 
+[![tests](https://github.com/dantudoroiu/fde-home-assignment/actions/workflows/tests.yml/badge.svg)](https://github.com/dantudoroiu/fde-home-assignment/actions/workflows/tests.yml)
+
 A small, end-to-end application that helps a non-technical **customer support team** handle incoming
 tickets faster and more safely.
 
@@ -56,7 +58,7 @@ Open http://localhost:8000:
 Other commands:
 
 ```powershell
-python -m pytest                              # 67 tests, no network, a few seconds
+python -m pytest                              # 68 tests, no network, a few seconds
 python scripts/run_eval.py                    # accuracy / grounding / latency / cost on the labeled set (live: ~$0.30 per run)
 python scripts/run_eval.py --grounding bm25   # compare grounding strategies on the same tickets
 python scripts/run_eval.py --triage-model claude-sonnet-5-5 --no-draft   # compare triage models
@@ -201,7 +203,9 @@ than the minimum cacheable length, so it is not cached (and is cheap anyway on H
 
 ### Eval results
 Live runs on the 40 labeled tickets (prompt version `2026-10-04.1`), plus the mock client as a
-"keyword rules" baseline:
+"keyword rules" baseline. Every live run quoted in this README is committed in
+[docs/eval_runs/](docs/eval_runs/), and `python scripts/rescore_eval.py docs/eval_runs/*.json`
+reproduces the numbers from the saved predictions, with no API key needed.
 
 | Configuration | Category acc. | Priority acc. | Review recall | Review precision | Grounding recall | Citation precision | Draft p50 / p95 | $ / ticket |
 |---|---|---|---|---|---|---|---|---|
@@ -337,7 +341,8 @@ intake is cheap and the model is the real limit.
 
 ## Testing
 
-`pytest` runs 67 tests in about 2 s with **no network access**:
+`pytest` runs 68 tests in about 2 s with **no network access**, locally and on every push via GitHub
+Actions ([.github/workflows/tests.yml](.github/workflows/tests.yml)):
 
 | File | What it proves |
 |---|---|
@@ -346,7 +351,7 @@ intake is cheap and the model is the real limit.
 | `test_llm_client.py` | the real `AnthropicClient` against a fake SDK: invalid output retried once then fails, refusal and truncation never parsed, each SDK error mapped to the right kind, cost computed from usage, refusal fallback only on Sonnet |
 | `test_prompts.py` | the draft system prompt contains the whole KB and is byte-identical regardless of article order (prompt-cache stability); in full-context mode the user turn carries no articles |
 | `test_retrieval.py` | the expected KB article appears in the top 3 for representative queries; unrelated or off-topic queries return nothing (regression test for generic words like "new"/"customer" matching articles) |
-| `test_api.py` | full lifecycle through HTTP (create → triage → feedback → metrics), outage still accepts tickets, input validation, UI pages render |
+| `test_api.py` | full lifecycle through HTTP (create → triage → feedback → metrics), outage still accepts tickets, input validation, feedback recorded only once per ticket, crash recovery at startup, UI pages render |
 
 Model *quality* is deliberately not tested in pytest, because it is non-deterministic and costs money.
 It is measured by `scripts/run_eval.py` against the 40 labeled tickets in `data/sample_tickets.jsonl`.

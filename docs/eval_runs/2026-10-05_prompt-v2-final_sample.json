@@ -1,0 +1,1289 @@
+{
+  "config": {
+    "mode": "live",
+    "triage_model": "claude-haiku-4-5",
+    "draft_model": "claude-sonnet-5-5",
+    "draft_effort": "low",
+    "grounding": "full_context",
+    "data": "data/sample_tickets.jsonl",
+    "prompt_version": "2026-10-05.2"
+  },
+  "summary": {
+    "tickets": 40,
+    "failures": 0,
+    "category_accuracy": 0.8,
+    "priority_accuracy": 0.775,
+    "priority_within_one": 1.0,
+    "review_recall": 1.0,
+    "review_precision": 0.81,
+    "review_confusion": {
+      "tp": 17,
+      "fp": 4,
+      "fn": 0,
+      "tn": 19
+    },
+    "grounding_recall": 0.969,
+    "citation_precision": 0.8,
+    "false_grounding_rate": 0.25,
+    "total_cost_usd": 0.2833,
+    "cost_per_ticket_usd": 0.00708,
+    "wall_clock_s": 67.8
+  },
+  "steps": {
+    "draft": {
+      "calls": 40,
+      "failed_attempts": 0,
+      "latency_ms_p50": 4372.0,
+      "latency_ms_p95": 5992.9,
+      "avg_input_tokens": 135,
+      "avg_output_tokens": 387,
+      "cache_hit_rate": 1.0,
+      "cost_usd": 0.2038
+    },
+    "triage": {
+      "calls": 40,
+      "failed_attempts": 0,
+      "latency_ms_p50": 1376.0,
+      "latency_ms_p95": 2698.6,
+      "avg_input_tokens": 1669,
+      "avg_output_tokens": 64,
+      "cache_hit_rate": 0.0,
+      "cost_usd": 0.0795
+    }
+  },
+  "tickets": [
+    {
+      "id": "T01",
+      "subject": "Can't reset my password",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-001"
+      ],
+      "cited": [
+        "KB-001"
+      ],
+      "expected_articles": [
+        "KB-001"
+      ],
+      "error": null
+    },
+    {
+      "id": "T02",
+      "subject": "SAML error after certificate update",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "risk:outage"
+      ],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-002"
+      ],
+      "cited": [
+        "KB-002"
+      ],
+      "expected_articles": [
+        "KB-002"
+      ],
+      "error": null
+    },
+    {
+      "id": "T03",
+      "subject": "Lost my phone, locked out by 2FA",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P2"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-003"
+      ],
+      "cited": [
+        "KB-003"
+      ],
+      "expected_articles": [
+        "KB-003"
+      ],
+      "error": null
+    },
+    {
+      "id": "T04",
+      "subject": "Invoice INV-20417 is higher than usual",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P3",
+        "P2"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-005",
+        "KB-011"
+      ],
+      "cited": [
+        "KB-005",
+        "KB-011"
+      ],
+      "expected_articles": [
+        "KB-005"
+      ],
+      "error": null
+    },
+    {
+      "id": "T05",
+      "subject": "Charged twice this month",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P2",
+        "P2"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "mentions_refund_or_commitment"
+      ],
+      "flags": [
+        "mentions_refund_or_commitment"
+      ],
+      "confidence": 0.95,
+      "articles": [
+        "KB-006",
+        "KB-005"
+      ],
+      "cited": [
+        "KB-006",
+        "KB-005"
+      ],
+      "expected_articles": [
+        "KB-006"
+      ],
+      "error": null
+    },
+    {
+      "id": "T06",
+      "subject": "Refund for annual plan",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "risk:churn_risk",
+        "mentions_refund_or_commitment"
+      ],
+      "flags": [
+        "mentions_refund_or_commitment"
+      ],
+      "confidence": 0.85,
+      "articles": [
+        "KB-006"
+      ],
+      "cited": [
+        "KB-006"
+      ],
+      "expected_articles": [
+        "KB-006"
+      ],
+      "error": null
+    },
+    {
+      "id": "T07",
+      "subject": "Update credit card",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [
+        "pii_redacted"
+      ],
+      "confidence": 0.95,
+      "articles": [
+        "KB-004"
+      ],
+      "cited": [
+        "KB-004"
+      ],
+      "expected_articles": [
+        "KB-004"
+      ],
+      "error": null
+    },
+    {
+      "id": "T08",
+      "subject": "Export to CSV fails",
+      "category": [
+        "technical",
+        "bug_report"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.82,
+      "articles": [
+        "KB-007",
+        "KB-008"
+      ],
+      "cited": [
+        "KB-007",
+        "KB-008"
+      ],
+      "expected_articles": [
+        "KB-007"
+      ],
+      "error": null
+    },
+    {
+      "id": "T09",
+      "subject": "API returning 429",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.9,
+      "articles": [
+        "KB-008"
+      ],
+      "cited": [
+        "KB-008"
+      ],
+      "expected_articles": [
+        "KB-008"
+      ],
+      "error": null
+    },
+    {
+      "id": "T10",
+      "subject": "Webhook signature mismatch",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-009"
+      ],
+      "cited": [
+        "KB-009"
+      ],
+      "expected_articles": [
+        "KB-009"
+      ],
+      "error": null
+    },
+    {
+      "id": "T11",
+      "subject": "Dashboards not loading for anyone",
+      "category": [
+        "bug_report",
+        "technical"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "risk:outage"
+      ],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-010"
+      ],
+      "cited": [
+        "KB-010"
+      ],
+      "expected_articles": [
+        "KB-010"
+      ],
+      "error": null
+    },
+    {
+      "id": "T12",
+      "subject": "One widget times out",
+      "category": [
+        "technical",
+        "bug_report"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-010"
+      ],
+      "cited": [
+        "KB-010"
+      ],
+      "expected_articles": [
+        "KB-010"
+      ],
+      "error": null
+    },
+    {
+      "id": "T13",
+      "subject": "Data missing from last week",
+      "category": [
+        "bug_report",
+        "bug_report"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "risk:data_loss",
+        "no_kb_citation"
+      ],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.95,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T14",
+      "subject": "Suspicious login from another country",
+      "category": [
+        "security",
+        "security"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "sensitive_category:security",
+        "risk:security_incident"
+      ],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-013",
+        "KB-001"
+      ],
+      "cited": [
+        "KB-013",
+        "KB-001"
+      ],
+      "expected_articles": [
+        "KB-013"
+      ],
+      "error": null
+    },
+    {
+      "id": "T15",
+      "subject": "Possible XSS in dashboard titles",
+      "category": [
+        "security",
+        "security"
+      ],
+      "priority": [
+        "P2",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "sensitive_category:security",
+        "risk:security_incident"
+      ],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-013"
+      ],
+      "cited": [
+        "KB-013"
+      ],
+      "expected_articles": [
+        "KB-013"
+      ],
+      "error": null
+    },
+    {
+      "id": "T16",
+      "subject": "GDPR deletion request",
+      "category": [
+        "data_privacy",
+        "data_privacy"
+      ],
+      "priority": [
+        "P2",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "sensitive_category:data_privacy",
+        "risk:legal_threat"
+      ],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-012"
+      ],
+      "cited": [
+        "KB-012"
+      ],
+      "expected_articles": [
+        "KB-012"
+      ],
+      "error": null
+    },
+    {
+      "id": "T17",
+      "subject": "Need your DPA",
+      "category": [
+        "data_privacy",
+        "data_privacy"
+      ],
+      "priority": [
+        "P3",
+        "P2"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "sensitive_category:data_privacy",
+        "risk:legal_threat"
+      ],
+      "flags": [],
+      "confidence": 0.92,
+      "articles": [
+        "KB-012"
+      ],
+      "cited": [
+        "KB-012"
+      ],
+      "expected_articles": [
+        "KB-012"
+      ],
+      "error": null
+    },
+    {
+      "id": "T18",
+      "subject": "Dark mode please",
+      "category": [
+        "feature_request",
+        "feature_request"
+      ],
+      "priority": [
+        "P4",
+        "P4"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.95,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T19",
+      "subject": "Feature suggestion: Slack alerts",
+      "category": [
+        "feature_request",
+        "feature_request"
+      ],
+      "priority": [
+        "P4",
+        "P4"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-009"
+      ],
+      "cited": [
+        "KB-009"
+      ],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T20",
+      "subject": "This is unacceptable",
+      "category": [
+        "bug_report",
+        "technical"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "angry_customer",
+        "risk:outage",
+        "risk:churn_risk",
+        "mentions_refund_or_commitment"
+      ],
+      "flags": [
+        "mentions_refund_or_commitment"
+      ],
+      "confidence": 0.92,
+      "articles": [
+        "KB-010",
+        "KB-006"
+      ],
+      "cited": [
+        "KB-010",
+        "KB-006"
+      ],
+      "expected_articles": [
+        "KB-010"
+      ],
+      "error": null
+    },
+    {
+      "id": "T21",
+      "subject": "Urgent - account",
+      "category": [
+        "other",
+        "other"
+      ],
+      "priority": [
+        "P4",
+        "P4"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "risk:prompt_injection",
+        "mentions_refund_or_commitment"
+      ],
+      "flags": [
+        "mentions_refund_or_commitment"
+      ],
+      "confidence": 0.95,
+      "articles": [
+        "KB-006"
+      ],
+      "cited": [
+        "KB-006"
+      ],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T22",
+      "subject": "Problema con la exportaci\u00f3n",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-007"
+      ],
+      "cited": [
+        "KB-007"
+      ],
+      "expected_articles": [
+        "KB-007"
+      ],
+      "error": null
+    },
+    {
+      "id": "T23",
+      "subject": "help",
+      "category": [
+        "other",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "low_confidence",
+        "no_kb_citation"
+      ],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.4,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T24",
+      "subject": "Invite never arrived",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-011"
+      ],
+      "cited": [
+        "KB-011"
+      ],
+      "expected_articles": [
+        "KB-011"
+      ],
+      "error": null
+    },
+    {
+      "id": "T25",
+      "subject": "How many seats do viewers use?",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P4",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.92,
+      "articles": [
+        "KB-011"
+      ],
+      "cited": [
+        "KB-011"
+      ],
+      "expected_articles": [
+        "KB-011"
+      ],
+      "error": null
+    },
+    {
+      "id": "T26",
+      "subject": "Webhook endpoint disabled",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P2"
+      ],
+      "review": [
+        false,
+        true
+      ],
+      "reasons": [
+        "risk:outage"
+      ],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-009"
+      ],
+      "cited": [
+        "KB-009"
+      ],
+      "expected_articles": [
+        "KB-009"
+      ],
+      "error": null
+    },
+    {
+      "id": "T27",
+      "subject": "Workspace read-only??",
+      "category": [
+        "billing",
+        "technical"
+      ],
+      "priority": [
+        "P2",
+        "P2"
+      ],
+      "review": [
+        false,
+        true
+      ],
+      "reasons": [
+        "risk:outage"
+      ],
+      "flags": [],
+      "confidence": 0.75,
+      "articles": [
+        "KB-004"
+      ],
+      "cited": [
+        "KB-004"
+      ],
+      "expected_articles": [
+        "KB-004"
+      ],
+      "error": null
+    },
+    {
+      "id": "T28",
+      "subject": "API key leaked on GitHub",
+      "category": [
+        "security",
+        "security"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "sensitive_category:security",
+        "risk:security_incident"
+      ],
+      "flags": [],
+      "confidence": 0.95,
+      "articles": [
+        "KB-008",
+        "KB-013"
+      ],
+      "cited": [
+        "KB-008",
+        "KB-013"
+      ],
+      "expected_articles": [
+        "KB-008",
+        "KB-013"
+      ],
+      "error": null
+    },
+    {
+      "id": "T29",
+      "subject": "VAT ID missing on invoices",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-005"
+      ],
+      "cited": [
+        "KB-005"
+      ],
+      "expected_articles": [
+        "KB-005"
+      ],
+      "error": null
+    },
+    {
+      "id": "T30",
+      "subject": "Excel shows numbers as dates",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P4",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-007"
+      ],
+      "cited": [
+        "KB-007"
+      ],
+      "expected_articles": [
+        "KB-007"
+      ],
+      "error": null
+    },
+    {
+      "id": "T31",
+      "subject": "Our lawyers will be in touch",
+      "category": [
+        "bug_report",
+        "data_privacy"
+      ],
+      "priority": [
+        "P1",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "angry_customer",
+        "sensitive_category:data_privacy",
+        "risk:data_loss",
+        "risk:legal_threat",
+        "no_kb_citation"
+      ],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.95,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T32",
+      "subject": "SSO redirect loop",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-002"
+      ],
+      "cited": [
+        "KB-002"
+      ],
+      "expected_articles": [
+        "KB-002"
+      ],
+      "error": null
+    },
+    {
+      "id": "T33",
+      "subject": "Cancel monthly plan",
+      "category": [
+        "billing",
+        "billing"
+      ],
+      "priority": [
+        "P4",
+        "P4"
+      ],
+      "review": [
+        false,
+        true
+      ],
+      "reasons": [
+        "risk:churn_risk",
+        "mentions_refund_or_commitment"
+      ],
+      "flags": [
+        "mentions_refund_or_commitment"
+      ],
+      "confidence": 0.95,
+      "articles": [
+        "KB-006",
+        "KB-004"
+      ],
+      "cited": [
+        "KB-006",
+        "KB-004"
+      ],
+      "expected_articles": [
+        "KB-006"
+      ],
+      "error": null
+    },
+    {
+      "id": "T34",
+      "subject": "Dashboard slow",
+      "category": [
+        "technical",
+        "technical"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-010"
+      ],
+      "cited": [
+        "KB-010"
+      ],
+      "expected_articles": [
+        "KB-010"
+      ],
+      "error": null
+    },
+    {
+      "id": "T35",
+      "subject": "Error 500 when saving dataset",
+      "category": [
+        "bug_report",
+        "bug_report"
+      ],
+      "priority": [
+        "P2",
+        "P2"
+      ],
+      "review": [
+        false,
+        true
+      ],
+      "reasons": [
+        "risk:outage",
+        "no_kb_citation"
+      ],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.92,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T36",
+      "subject": "Love the new release",
+      "category": [
+        "other",
+        "other"
+      ],
+      "priority": [
+        "P4",
+        "P4"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.95,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [],
+      "error": null
+    },
+    {
+      "id": "T37",
+      "subject": "Admin left the company",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P2",
+        "P2"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "risk:account_ownership_change",
+        "no_kb_citation"
+      ],
+      "flags": [
+        "no_kb_citation"
+      ],
+      "confidence": 0.85,
+      "articles": [],
+      "cited": [],
+      "expected_articles": [
+        "KB-011"
+      ],
+      "error": null
+    },
+    {
+      "id": "T38",
+      "subject": "Questions about plan + bug",
+      "category": [
+        "technical",
+        "other"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "low_confidence"
+      ],
+      "flags": [],
+      "confidence": 0.6,
+      "articles": [
+        "KB-002"
+      ],
+      "cited": [
+        "KB-002"
+      ],
+      "expected_articles": [
+        "KB-002",
+        "KB-010"
+      ],
+      "error": null
+    },
+    {
+      "id": "T39",
+      "subject": "Need answer today or we cancel",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P2",
+        "P1"
+      ],
+      "review": [
+        true,
+        true
+      ],
+      "reasons": [
+        "priority_p1",
+        "angry_customer",
+        "risk:churn_risk",
+        "risk:legal_threat"
+      ],
+      "flags": [],
+      "confidence": 0.85,
+      "articles": [
+        "KB-002"
+      ],
+      "cited": [
+        "KB-002"
+      ],
+      "expected_articles": [
+        "KB-002"
+      ],
+      "error": null
+    },
+    {
+      "id": "T40",
+      "subject": "Password in ticket",
+      "category": [
+        "account_access",
+        "account_access"
+      ],
+      "priority": [
+        "P3",
+        "P3"
+      ],
+      "review": [
+        false,
+        false
+      ],
+      "reasons": [],
+      "flags": [
+        "pii_redacted"
+      ],
+      "confidence": 0.9,
+      "articles": [
+        "KB-001"
+      ],
+      "cited": [
+        "KB-001"
+      ],
+      "expected_articles": [
+        "KB-001"
+      ],
+      "error": null
+    }
+  ]
+}

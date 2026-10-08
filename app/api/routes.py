@@ -74,6 +74,9 @@ def record_feedback(request: Request, ticket_id: int, feedback: FeedbackIn) -> N
         raise HTTPException(status_code=404, detail="ticket not found")
     if ticket["status"] in ("received", "processing"):
         raise HTTPException(status_code=409, detail="ticket is still being processed")
+    if ticket["status"] == "done":
+        # One decision per ticket: a second submission would double-count acceptance metrics.
+        raise HTTPException(status_code=409, detail="feedback already recorded")
 
     triage = ticket["triage"] or {}
     draft_reply = (ticket["draft"] or {}).get("reply")

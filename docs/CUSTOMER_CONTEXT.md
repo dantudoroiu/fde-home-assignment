@@ -41,7 +41,7 @@ An assistant inside the agents' existing workflow. It does not replace them. For
 ## Value
 - **Time saved:** if drafting drops from about 5 minutes to about 2 minutes for the roughly 60% of
   tickets that are routine, that frees about 18 agent-hours per day, roughly 2 FTE. That capacity can
-  absorb growth or go to harder tickets. The model cost is about $6/day (see the README), which is
+  absorb growth or go to harder tickets. The model cost is about $4/day (measured $0.007 per ticket at 600 tickets/day, see the README), which is
   negligible next to that.
 - **Risk reduction:** P1, security and legal tickets are surfaced immediately instead of in arrival
   order, and risky promises in drafts are flagged before they are sent.
