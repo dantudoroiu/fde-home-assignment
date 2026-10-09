@@ -56,7 +56,8 @@ def redact_pii(text: str) -> tuple[str, int]:
 # --- Draft checks ------------------------------------------------------------------------------
 
 _COMMITMENT_RE = re.compile(
-    r"(?i)\b(refund(ed)?|credit(s|ed)?|reimburs\w*|compensat\w*|discount\w*|free of charge|"
+    # "credit card" is a payment method, not a promise of credit.
+    r"(?i)\b(refund(ed)?|credit(s|ed)?(?!\s*card)|reimburs\w*|compensat\w*|discount\w*|free of charge|"
     r"waive\w*|guarantee\w*|will be (fixed|resolved|deployed) (by|within|on))\b"
 )
 

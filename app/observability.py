@@ -76,6 +76,8 @@ def compute_metrics(db: Database) -> dict[str, Any]:
     actions: dict[str, int] = {}
     for f in feedback:
         actions[f["action"]] = actions.get(f["action"], 0) + 1
+    # Acceptance is measured only where there was an AI draft to accept ("manual" = AI unavailable).
+    drafted = sum(n for a, n in actions.items() if a != "manual")
     category_agreement = [
         f["corrected_category"] in (None, f["ai_category"]) for f in feedback if f["ai_category"]
     ]
@@ -85,7 +87,7 @@ def compute_metrics(db: Database) -> dict[str, Any]:
 
     return {
         "tickets": {"total": sum(status_counts.values()), "by_status": status_counts},
-        "ai_unavailable_rate": _ratio(status_counts.get("ai_unavailable", 0), processed),
+        "ai_unavailable_rate": _ratio(db.ai_unavailable_count(), processed),
         "pipeline_latency_ms": {
             "p50": percentile(pipeline_ms, 50),
             "p95": percentile(pipeline_ms, 95),
@@ -99,7 +101,7 @@ def compute_metrics(db: Database) -> dict[str, Any]:
         "agent_feedback": {
             "total": len(feedback),
             "actions": actions,
-            "draft_accept_rate": _ratio(actions.get("accepted", 0), len(feedback)),
+            "draft_accept_rate": _ratio(actions.get("accepted", 0), drafted),
             "category_agreement": _ratio(sum(category_agreement), len(category_agreement)),
             "priority_agreement": _ratio(sum(priority_agreement), len(priority_agreement)),
             "avg_edit_ratio": _avg([f["edit_ratio"] for f in feedback if f["edit_ratio"] is not None]),

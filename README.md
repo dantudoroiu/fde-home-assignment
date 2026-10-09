@@ -58,7 +58,7 @@ Open http://localhost:8000:
 Other commands:
 
 ```powershell
-python -m pytest                              # 76 tests, no network, a few seconds
+python -m pytest                              # 78 tests, no network, a few seconds
 python scripts/run_eval.py                    # accuracy / grounding / latency / cost on the labeled set (live: ~$0.30 per run)
 python scripts/run_eval.py --grounding bm25   # compare grounding strategies on the same tickets
 python scripts/run_eval.py --triage-model claude-sonnet-5-5 --no-draft   # compare triage models
@@ -117,13 +117,14 @@ app/
   db.py                SQLite repository (tickets, llm_calls, feedback)
   observability.py     structlog JSON logging, metrics from DB
   llm/client.py        LLMClient protocol, AnthropicClient, MockClient   ← only place that calls a model
+  llm/circuit_breaker.py   fails calls fast after repeated API outages
   llm/prompts.py       versioned system prompts
   pipeline/            triage, draft, guardrails, orchestrator; retrieval.py = KB loading + BM25 fallback
   api/routes.py        JSON API        web/routes.py + templates/   agent UI (Jinja2 + HTMX)
 kb/                    knowledge-base articles (fictional)
 data/sample_tickets.jsonl   40 labeled tickets (seed data + eval gold set)
 data/holdout_tickets.jsonl  12 held-out labeled tickets (never used for prompt tuning)
-scripts/               seed.py, run_eval.py
+scripts/               seed.py, run_eval.py, rescore_eval.py (re-score saved runs, no API calls)
 tests/                 pytest suite (MockClient / fake SDK only)
 ```
 
@@ -202,8 +203,9 @@ than the minimum cacheable length, so it is not cached (and is cheap anyway on H
   accuracy metrics, not just offline evals.
 
 ### Eval results
-Live runs on the 40 labeled tickets (prompt version `2026-10-04.1`), plus the mock client as a
-"keyword rules" baseline. Every live run quoted in this README is committed in
+Live runs on the 40 labeled tickets, plus the mock client as a "keyword rules" baseline. The
+grounding comparison ran on prompt `2026-10-04.1`; the **last row is the configuration the app ships
+with** (prompt `2026-10-05.2`, after the priority fix described below). Every live run quoted in this README is committed in
 [docs/eval_runs/](docs/eval_runs/), and `python scripts/rescore_eval.py docs/eval_runs/*.json`
 reproduces the numbers from the saved predictions, with no API key needed.
 
@@ -212,10 +214,11 @@ reproduces the numbers from the saved predictions, with no API key needed.
 | Keyword rules (mock mode) | 0.70 | 0.45 | 0.82 | 0.64 | n/a | n/a | n/a | $0 |
 | Haiku + Sonnet, **full KB** (default) | 0.78 | 0.70 | 0.95 | 1.00 | **1.00** | 0.73 | 4.3 / 5.5 s | **$0.0068** |
 | Haiku + Sonnet, BM25 top 3 | 0.80 | 0.65 | 0.89 | 0.89 | 0.94 | **0.84** | 4.3 / 5.2 s | $0.0076 |
+| **Shipped:** full KB, prompt `2026-10-05.2` | 0.80 | **0.78** | **1.00** | 0.90 | 0.97 | 0.80 | 4.4 / 6.0 s | $0.0071 |
 
 - Review metrics use the reviewed labels. Label review changed two tickets to `should_review: true`
   (T33, a cancellation; T35, an unexplained server error), and the metrics were recomputed from the
-  saved predictions in `eval_results/`.
+  saved predictions in [docs/eval_runs/](docs/eval_runs/).
 - *Grounding recall:* the draft cited an expected article. *Citation precision:* the share of cited
   articles that were expected.
 - How to read it:
@@ -342,18 +345,18 @@ intake is cheap and the model is the real limit.
 
 ## Testing
 
-`pytest` runs 76 tests in about 2 s with **no network access**, locally and on every push via GitHub
+`pytest` runs 78 tests in about 3 s with **no network access**, locally and on every push via GitHub
 Actions ([.github/workflows/tests.yml](.github/workflows/tests.yml)):
 
 | File | What it proves |
 |---|---|
-| `test_guardrails.py` | routing rules, citation stripping, commitment detection, PII redaction (incl. a Luhn false-positive guard) |
+| `test_guardrails.py` | routing rules, citation stripping, commitment detection ("credit card" is not a promise of credit), PII redaction (incl. a Luhn false-positive guard) |
 | `test_orchestrator.py` | happy path; triage failure → `ai_unavailable`; draft failure keeps triage; unexpected exception never leaves a ticket stuck; the model never sees redacted PII; ticket text is delimited; full-context vs. BM25 grounding paths; an ungrounded draft goes to review; an oversized KB falls back to BM25 |
 | `test_llm_client.py` | the real `AnthropicClient` against a fake SDK: circuit breaker stops API calls after repeated outages, including calls already queued during a burst, and isn't tripped by bad answers; invalid output retried once then fails, refusal and truncation never parsed, each SDK error mapped to the right kind, cost computed from usage, refusal fallback only on Sonnet |
 | `test_prompts.py` | the draft system prompt contains the whole KB and is byte-identical regardless of article order (prompt-cache stability); in full-context mode the user turn carries no articles |
 | `test_circuit_breaker.py` | opens after N consecutive failures, a success resets the count, exactly one trial call after the cooldown, the trial closes or re-opens it (fake clock, no waiting) |
 | `test_retrieval.py` | the expected KB article appears in the top 3 for representative queries; unrelated or off-topic queries return nothing (regression test for generic words like "new"/"customer" matching articles) |
-| `test_api.py` | full lifecycle through HTTP (create → triage → feedback → metrics), outage still accepts tickets, input validation, feedback recorded only once per ticket, crash recovery at startup, UI pages render |
+| `test_api.py` | full lifecycle through HTTP (create → triage → feedback → metrics), outage still accepts tickets and stays in the AI-unavailable rate after an agent replies manually (a manual reply isn't counted as an accepted draft), input validation, feedback recorded only once per ticket, a finished ticket can't be re-run, crash recovery at startup, UI pages render |
 
 Model *quality* is deliberately not tested in pytest, because it is non-deterministic and costs money.
 It is measured by `scripts/run_eval.py` against the 40 labeled tickets in `data/sample_tickets.jsonl`.

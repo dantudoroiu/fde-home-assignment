@@ -62,9 +62,32 @@ def test_llm_outage_still_accepts_ticket(client_factory):
     with client_factory(llm) as client:
         resp = client.post("/api/tickets", json=TICKET)
         assert resp.status_code == 202
-        ticket = client.get(f"/api/tickets/{resp.json()['id']}").json()
-        assert ticket["status"] == "ai_unavailable"
+        tid = resp.json()["id"]
+        assert client.get(f"/api/tickets/{tid}").json()["status"] == "ai_unavailable"
         assert client.get("/api/metrics").json()["ai_unavailable_rate"] == 1.0
+
+        # The agent replies manually. The outage must stay in the rate, and a reply the AI never
+        # drafted must not count as an accepted draft.
+        client.post(f"/api/tickets/{tid}/feedback", json={"action": "accepted", "final_reply": "Hi, ..."})
+        metrics = client.get("/api/metrics").json()
+        assert metrics["ai_unavailable_rate"] == 1.0
+        assert metrics["agent_feedback"]["actions"] == {"manual": 1}
+        assert metrics["agent_feedback"]["draft_accept_rate"] is None
+
+
+def test_reprocess_only_from_a_finished_ai_state(client_factory):
+    llm = ScriptedClient(triage=make_triage(), draft=make_draft())
+    with client_factory(llm) as client:
+        tid = client.post("/api/tickets", json=TICKET).json()["id"]
+        assert client.post(f"/api/tickets/{tid}/reprocess").status_code == 202  # ready: allowed
+
+        client.post(f"/api/tickets/{tid}/feedback", json={"action": "rejected"})
+        # Re-running a done ticket would reopen it for a second, double-counted feedback.
+        assert client.post(f"/api/tickets/{tid}/reprocess").status_code == 409
+        assert client.post(f"/tickets/{tid}/reprocess").status_code == 409  # UI route too
+        assert client.get(f"/api/tickets/{tid}").json()["status"] == "done"
+        assert client.post("/api/tickets/999/reprocess").status_code == 404
+        assert client.post("/tickets/999/reprocess").status_code == 404
 
 
 @pytest.mark.parametrize(

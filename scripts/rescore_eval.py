@@ -4,7 +4,7 @@ run_eval.py stores every prediction per ticket. When labels are corrected later,
 predictions shows what the run scores under the corrected labels, and lets anyone reproduce the README
 numbers from the committed files in docs/eval_runs/.
 
-    python scripts/rescore_eval.py docs/eval_runs/2026-10-05_prompt-v2_sample.json
+    python scripts/rescore_eval.py docs/eval_runs/2026-10-05_prompt-v2-final_sample.json
 """
 
 import json

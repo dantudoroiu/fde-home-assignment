@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from app.api.routes import record_feedback, submit_ticket
+from app.api.routes import record_feedback, reprocess, submit_ticket
 from app.models import CATEGORIES, PRIORITIES, FeedbackIn, TicketIn
 from app.observability import compute_metrics
 
@@ -118,8 +118,7 @@ def ticket_feedback_form(
 
 @router.post("/tickets/{ticket_id}/reprocess")
 def ticket_reprocess_form(request: Request, ticket_id: int, background: BackgroundTasks):
-    request.app.state.db.update_ticket(ticket_id, status="received")
-    background.add_task(request.app.state.pipeline.process, ticket_id)
+    reprocess(request, background, ticket_id)
     return RedirectResponse(f"/tickets/{ticket_id}", status_code=303)
 
 

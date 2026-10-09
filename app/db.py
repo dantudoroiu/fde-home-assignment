@@ -182,6 +182,15 @@ class Database:
             rows = conn.execute("SELECT status, COUNT(*) AS n FROM tickets GROUP BY status").fetchall()
         return {r["status"]: r["n"] for r in rows}
 
+    def ai_unavailable_count(self) -> int:
+        """Tickets whose last pipeline run failed (triage:* or internal_error). Counted from the error
+        column, which survives the agent closing the ticket, so the rate doesn't shrink as agents work.
+        A draft failure (draft:*) still produced a triage, so it isn't counted."""
+        with self._connect() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM tickets WHERE error IS NOT NULL AND error NOT LIKE 'draft:%'"
+            ).fetchone()[0]
+
     def pipeline_latencies_ms(self) -> list[int]:
         with self._connect() as conn:
             rows = conn.execute(

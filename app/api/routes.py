@@ -47,10 +47,7 @@ def get_ticket(ticket_id: int, request: Request) -> dict[str, Any]:
 
 @router.post("/api/tickets/{ticket_id}/reprocess", status_code=status.HTTP_202_ACCEPTED)
 def reprocess_ticket(ticket_id: int, request: Request, background: BackgroundTasks) -> dict[str, Any]:
-    if request.app.state.db.get_ticket(ticket_id) is None:
-        raise HTTPException(status_code=404, detail="ticket not found")
-    request.app.state.db.update_ticket(ticket_id, status="received")
-    background.add_task(request.app.state.pipeline.process, ticket_id)
+    reprocess(request, background, ticket_id)
     return {"id": ticket_id, "status": "received"}
 
 
@@ -75,6 +72,22 @@ def submit_ticket(request: Request, background: BackgroundTasks, ticket: TicketI
     return ticket_id
 
 
+# Statuses a ticket may be re-run from. Not received/processing (a pipeline is already queued or
+# running) and not done (re-running would reopen it for a second, double-counted feedback).
+REPROCESSABLE = ("ai_unavailable", "ready", "needs_review")
+
+
+def reprocess(request: Request, background: BackgroundTasks, ticket_id: int) -> None:
+    db = request.app.state.db
+    ticket = db.get_ticket(ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="ticket not found")
+    if ticket["status"] not in REPROCESSABLE:
+        raise HTTPException(status_code=409, detail=f"cannot reprocess a ticket in status {ticket['status']}")
+    db.update_ticket(ticket_id, status="received")
+    background.add_task(request.app.state.pipeline.process, ticket_id)
+
+
 def record_feedback(request: Request, ticket_id: int, feedback: FeedbackIn) -> None:
     db = request.app.state.db
     ticket = db.get_ticket(ticket_id)
@@ -88,7 +101,9 @@ def record_feedback(request: Request, ticket_id: int, feedback: FeedbackIn) -> N
 
     triage = ticket["triage"] or {}
     draft_reply = (ticket["draft"] or {}).get("reply")
-    action = feedback.action
+    # Without a draft (AI unavailable) the agent wrote the reply: record it as manual so it doesn't
+    # count as an accepted AI draft.
+    action = feedback.action if draft_reply else "manual"
     edit_ratio = None
     if draft_reply and feedback.final_reply is not None and action != "rejected":
         similarity = difflib.SequenceMatcher(None, draft_reply.strip(), feedback.final_reply.strip()).ratio()

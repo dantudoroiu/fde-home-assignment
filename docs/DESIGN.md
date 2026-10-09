@@ -79,6 +79,7 @@ sequenceDiagram
 | 8 | **The model sees redacted text; the agent sees the original** | Card numbers and passwords should not go to a third-party API, but the agent may need the context. | Redacting at storage, which loses information the agent needs. |
 | 9 | **Server-rendered UI (Jinja2 + HTMX)** | One process, no JS build, enough for a realistic agent workflow. | A React SPA, which costs more setup time for no evaluation benefit here. |
 | 10 | **Metrics computed from the DB** | Survives restarts, single source of truth, no extra infrastructure. | Prometheus/OpenTelemetry counters, the right choice for production. |
+| 11 | **Concurrency cap and circuit breaker in the LLM client** | A burst of tickets must not exceed the org's concurrency limit (found as 429s when seeding), and an outage must not hold every worker thread through timeouts and retries. Tickets fail fast into `ai_unavailable` and agents work them manually. | A durable queue with backoff and a dead-letter queue, the scaling path once there are several processes (both limits are per process today). |
 
 ## Prompt design notes
 - **Static system prompts.** They contain no per-request data, so they stay byte-identical and are

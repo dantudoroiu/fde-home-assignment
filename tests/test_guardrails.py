@@ -74,6 +74,12 @@ def test_neutral_reply_not_flagged():
     assert detect_commitments("You can update your card under Settings > Billing.") == []
 
 
+def test_credit_card_is_not_a_promise_of_credit():
+    # Routine payment-method replies (T07) must not be forced into review.
+    assert detect_commitments("You can update your credit card under Settings > Billing.") == []
+    assert detect_commitments("We'll credit your account for the outage.") == ["mentions_refund_or_commitment"]
+
+
 # --- PII --------------------------------------------------------------------------------------
 
 def test_card_number_redacted():
