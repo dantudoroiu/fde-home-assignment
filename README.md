@@ -420,7 +420,8 @@ leaked API key, a card number and a password.
 
 **How I worked with it:** I believe my most important contribution was choosing the direction and
 questioning the coding agent at every step, iterating on the design before and during implementation.
-I read every diff and accepted changes only with evidence: tests, the eval, or running the app myself.
+Rather than reviewing every line, I accepted changes only with evidence: tests, the eval, or running
+the app myself. I then walked through the core functionality so I can explain every part.
 For example, a test ticket I submitted by hand (an off-topic question about headphones) showed keyword
 retrieval attaching unrelated articles. That made me challenge the grounding design, which led to the
 grounding decision below. Seeding all 40 tickets against the live API exposed a concurrency limit (429)
