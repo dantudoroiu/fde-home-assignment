@@ -16,6 +16,16 @@ signal.
 
 > Customer context and value: [docs/CUSTOMER_CONTEXT.md](docs/CUSTOMER_CONTEXT.md) · Design note and diagrams: [docs/DESIGN.md](docs/DESIGN.md)
 
+**The queue:** tickets that need a human come first, each with the reasons why, then by AI priority.
+
+![Support queue with P1 outage and data-loss tickets on top, each showing its review reasons](docs/img/queue.png)
+
+**A ticket:** AI triage on the left; on the right, a draft grounded in a KB article (KB-002) for the
+agent to edit, send or reject. This P1 outage is flagged for review, so the agent is told to read
+the draft carefully before sending.
+
+![Ticket page with triage, review reasons and an editable grounded draft reply](docs/img/ticket.png)
+
 ---
 
 ## Quick start
