@@ -26,6 +26,7 @@ python scripts/run_eval.py --triage-model claude-haiku-4-5   # live eval: accura
 - `app/models.py`: Pydantic schemas (Ticket, TriageResult, DraftResult, Feedback)
 - `app/db.py`: SQLite repository (tickets, llm_calls, feedback)
 - `app/llm/client.py`: `LLMClient` protocol, `AnthropicClient`, `MockClient`
+- `app/llm/circuit_breaker.py`: fails calls fast after repeated API availability failures (used by `AnthropicClient`)
 - `app/llm/prompts.py`: versioned system prompts
 - `app/pipeline/`: `triage` → `draft` → `guardrails`, run by `orchestrator`. Grounding defaults to the whole KB
   in the cached draft system prompt (`GROUNDING=full_context`); `retrieval.py` loads the KB and provides the BM25

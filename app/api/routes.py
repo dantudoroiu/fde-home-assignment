@@ -14,7 +14,15 @@ log = get_logger(__name__)
 
 @router.get("/healthz")
 def healthz(request: Request) -> dict[str, Any]:
-    return {"status": "ok", "llm_mode": request.app.state.settings.llm_mode, "db": request.app.state.db.ping()}
+    state = request.app.state
+    return {
+        "status": "ok",
+        "llm_mode": state.settings.llm_mode,
+        "db": state.db.ping(),
+        # closed = normal, open = failing fast after repeated API failures, half_open = probing.
+        # None for clients without a breaker (mock mode).
+        "llm_circuit": getattr(state.pipeline.llm, "circuit_state", None),
+    }
 
 
 @router.post("/api/tickets", status_code=status.HTTP_202_ACCEPTED)

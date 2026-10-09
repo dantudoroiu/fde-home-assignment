@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     # Cap on simultaneous API calls per process. Background tasks run in a threadpool, so a burst of
     # tickets would otherwise fire dozens of calls at once and hit the org's concurrency limit (429).
     llm_max_concurrency: int = 4
+    # Circuit breaker: after this many consecutive availability failures (timeout, 429, 5xx,
+    # connection), fail calls immediately for the cooldown instead of waiting through retries.
+    llm_breaker_failure_threshold: int = 5
+    llm_breaker_cooldown_seconds: float = 60.0
     refusal_fallback: bool = True  # server-side refusal fallback on models that support it
 
     database_path: Path = ROOT_DIR / "triage.db"

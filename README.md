@@ -58,7 +58,7 @@ Open http://localhost:8000:
 Other commands:
 
 ```powershell
-python -m pytest                              # 68 tests, no network, a few seconds
+python -m pytest                              # 76 tests, no network, a few seconds
 python scripts/run_eval.py                    # accuracy / grounding / latency / cost on the labeled set (live: ~$0.30 per run)
 python scripts/run_eval.py --grounding bm25   # compare grounding strategies on the same tickets
 python scripts/run_eval.py --triage-model claude-sonnet-5-5 --no-draft   # compare triage models
@@ -272,6 +272,7 @@ written and measured with the old prompt *before* changing it, and are never use
 | Failure | Handling | Where |
 |---|---|---|
 | API timeout, 429, 5xx, connection error | SDK retries (`LLM_MAX_RETRIES`, default 2) with an explicit timeout, then mapped to a typed `LLMError` | `llm/client.py` |
+| Anthropic outage (many failures in a row) | **Circuit breaker:** after 5 consecutive availability failures (timeout, 429, 5xx, connection) it opens, and calls fail immediately as `circuit_open` for 60 s. Then one trial call probes: success closes it, failure re-opens it. Bad answers (invalid JSON, refusals) don't count, because they prove the API is up. Measured in a simulated outage: tickets arriving while it's open land in `ai_unavailable` in **~9 ms instead of 7–22 s**. State is shown on `/healthz` | `llm/circuit_breaker.py`, `llm/client.py` |
 | Burst of tickets exceeds the org's concurrency limit | At most `LLM_MAX_CONCURRENCY` (default 4) calls in flight; the rest wait for a slot. Found when seeding 40 tickets on a new account: 4 tickets hit 429 *"concurrent requests exceeded"* and correctly landed in `ai_unavailable`, and they recovered with "Retry AI" after the fix | `llm/client.py` |
 | Triage fails | Ticket goes to `ai_unavailable` and is handled manually exactly as before. "Retry AI" button. | `orchestrator.py` |
 | Draft fails | Triage is kept (the queue is still sorted); `needs_review` with `draft_unavailable` | `orchestrator.py` |
@@ -302,7 +303,7 @@ written and measured with the old prompt *before* changing it, and are never use
   - pipeline p50/p95; per-step call outcomes, p50/p95 latency, tokens and cost
   - cost per processed ticket
   - agent accept/edit/reject rates, average edit ratio, category and priority agreement
-- **`/healthz`** reports DB reachability and LLM mode.
+- **`/healthz`** reports DB reachability, LLM mode and the circuit breaker state (`closed` / `open` / `half_open`).
 
 In production I would add: OpenTelemetry traces spanning webhook → pipeline → API call; alerts on
 AI-unavailable rate, p95 latency, cost per day and a drop in acceptance rate; and a dashboard broken
@@ -341,15 +342,16 @@ intake is cheap and the model is the real limit.
 
 ## Testing
 
-`pytest` runs 68 tests in about 2 s with **no network access**, locally and on every push via GitHub
+`pytest` runs 76 tests in about 2 s with **no network access**, locally and on every push via GitHub
 Actions ([.github/workflows/tests.yml](.github/workflows/tests.yml)):
 
 | File | What it proves |
 |---|---|
 | `test_guardrails.py` | routing rules, citation stripping, commitment detection, PII redaction (incl. a Luhn false-positive guard) |
 | `test_orchestrator.py` | happy path; triage failure → `ai_unavailable`; draft failure keeps triage; unexpected exception never leaves a ticket stuck; the model never sees redacted PII; ticket text is delimited; full-context vs. BM25 grounding paths; an ungrounded draft goes to review; an oversized KB falls back to BM25 |
-| `test_llm_client.py` | the real `AnthropicClient` against a fake SDK: invalid output retried once then fails, refusal and truncation never parsed, each SDK error mapped to the right kind, cost computed from usage, refusal fallback only on Sonnet |
+| `test_llm_client.py` | the real `AnthropicClient` against a fake SDK: circuit breaker stops API calls after repeated outages, including calls already queued during a burst, and isn't tripped by bad answers; invalid output retried once then fails, refusal and truncation never parsed, each SDK error mapped to the right kind, cost computed from usage, refusal fallback only on Sonnet |
 | `test_prompts.py` | the draft system prompt contains the whole KB and is byte-identical regardless of article order (prompt-cache stability); in full-context mode the user turn carries no articles |
+| `test_circuit_breaker.py` | opens after N consecutive failures, a success resets the count, exactly one trial call after the cooldown, the trial closes or re-opens it (fake clock, no waiting) |
 | `test_retrieval.py` | the expected KB article appears in the top 3 for representative queries; unrelated or off-topic queries return nothing (regression test for generic words like "new"/"customer" matching articles) |
 | `test_api.py` | full lifecycle through HTTP (create → triage → feedback → metrics), outage still accepts tickets, input validation, feedback recorded only once per ticket, crash recovery at startup, UI pages render |
 
@@ -402,8 +404,6 @@ leaked API key, a card number and a password.
 
 ## Use of AI in this project
 
-<!-- TODO(candidate): review and adjust this section so it reflects exactly what you did. -->
-
 **Where AI was used** (Claude Code, with a project [CLAUDE.md](CLAUDE.md) that sets the conventions):
 - **Planning:** turning the brief into an implementation plan, and pressure-testing the design (failure
   modes, observability, scaling questions).
@@ -415,13 +415,21 @@ leaked API key, a card number and a password.
 - **Synthetic data:** the fictional KB articles and the 40 sample tickets.
 - **Documentation:** first drafts of this README and the design note.
 
+**How I worked with it:** I believe my most important contribution was choosing the direction and
+questioning the coding agent at every step, iterating on the design before and during implementation.
+I read every diff and accepted changes only with evidence: tests, the eval, or running the app myself.
+For example, a test ticket I submitted by hand (an off-topic question about headphones) showed keyword
+retrieval attaching unrelated articles. That made me challenge the grounding design, which led to the
+grounding decision below. Seeding all 40 tickets against the live API exposed a concurrency limit (429)
+that no unit test could catch, which led to the `LLM_MAX_CONCURRENCY` cap.
+
 **Where I deliberately did not rely on AI:**
 - **Problem framing:** choosing the workflow, the customer scenario and the assumptions.
 - **Routing policy:** which situations require a human, the recall-over-precision stance, and the
   "never auto-send" rule. These are product and risk decisions.
-- **Gold labels:** the expected category, priority and review decision for each sample ticket were
-  reviewed by me, because an eval graded against AI-generated labels would mostly measure agreement
-  with itself.
+- **Gold labels:** I reviewed the expected category, priority and review decision for each sample
+  ticket myself, because an eval graded against AI-generated labels would mostly measure the AI
+  agreeing with itself.
 - **Trade-off analysis:** model choice, cost interpretation and rollout plan.
 - **Grounding strategy:** after manual testing exposed keyword retrieval returning unrelated
   articles, I weighed BM25 vs. the full KB in context vs. an agent with KB tools. I chose full context

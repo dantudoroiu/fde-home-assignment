@@ -10,12 +10,13 @@ import re
 import threading
 import time
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Protocol, TypeVar
+from typing import Any, Callable, NoReturn, Protocol, TypeVar
 
 import anthropic
 from pydantic import BaseModel, ValidationError
 
 from app.config import Settings, estimate_cost_usd
+from app.llm.circuit_breaker import CircuitBreaker
 from app.llm.prompts import PROMPT_VERSION
 from app.models import DraftResult, Entity, TriageResult
 from app.observability import get_logger
@@ -28,13 +29,15 @@ T = TypeVar("T", bound=BaseModel)
 # Models that accept the server-side refusal fallback in its "default" form.
 FALLBACK_CAPABLE_MODELS = {"claude-sonnet-5-5", "claude-opus-5-5", "claude-opus-5", "claude-fable-5-1"}
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+# LLMError kinds that mean "the API is unavailable" and count towards opening the circuit breaker.
+AVAILABILITY_ERRORS = frozenset({"timeout", "rate_limit", "api_error", "connection"})
 
 
 class LLMError(Exception):
     """A model call that produced no usable output.
 
     kind is one of: timeout, rate_limit, connection, api_error, config, refusal, truncated,
-    invalid_output.
+    invalid_output, circuit_open (call not attempted: the API recently failed repeatedly).
     """
 
     def __init__(self, kind: str, message: str):
@@ -61,6 +64,10 @@ class CallRecord:
 
 
 CallSink = Callable[[CallRecord], None]
+
+
+class _CircuitOpen(Exception):
+    """Internal signal: the breaker rejected the call after a slot was acquired."""
 
 
 def log_sink(record: CallRecord) -> None:
@@ -98,11 +105,23 @@ class AnthropicClient:
         self._sink = sink
         # Bounds in-flight API calls (including SDK retries) across all background-task threads.
         self._slots = threading.BoundedSemaphore(settings.llm_max_concurrency)
+        self._breaker = CircuitBreaker(
+            settings.llm_breaker_failure_threshold, settings.llm_breaker_cooldown_seconds
+        )
         self._sdk = sdk or anthropic.Anthropic(
             api_key=settings.anthropic_api_key or None,
             timeout=settings.llm_timeout_seconds,
             max_retries=settings.llm_max_retries,
         )
+
+    @property
+    def circuit_state(self) -> str:
+        return self._breaker.state
+
+    def _reject_circuit_open(self, record: CallRecord) -> NoReturn:
+        record.outcome = "circuit_open"
+        self._sink(record)
+        raise LLMError("circuit_open", "model API marked unavailable after repeated failures")
 
     def generate(
         self,
@@ -122,18 +141,35 @@ class AnthropicClient:
                 ticket_id=ticket_id, step=step, model=model, prompt_version=PROMPT_VERSION,
                 attempt=attempt, outcome="ok", latency_ms=0,
             )
+            # Fast path: if the breaker is already open, don't even queue for a slot.
+            if self._breaker.is_rejecting():
+                self._reject_circuit_open(record)
             try:
                 # Wait for a free slot first, so latency_ms measures the API call, not the queue.
                 with self._slots:
+                    # Authoritative check, after the wait: during a burst, calls queued behind the
+                    # slots while the breaker was closed must not go out once it has opened.
+                    if not self._breaker.allow_request():
+                        raise _CircuitOpen()
                     started = time.perf_counter()
                     response = self._sdk.beta.messages.create(**request)
+            except _CircuitOpen:
+                self._reject_circuit_open(record)
             except Exception as exc:  # mapped to LLMError below; never leaks SDK types
                 record.latency_ms = _elapsed_ms(started)
                 error = _map_sdk_error(exc)
+                # Only availability problems trip the breaker; a rejected request (bad key, bad
+                # model name) means the API is reachable.
+                if error.kind in AVAILABILITY_ERRORS:
+                    self._breaker.record_failure()
+                else:
+                    self._breaker.record_success()
                 record.outcome, record.error = error.kind, str(exc)[:500]
                 self._sink(record)
                 raise error from exc
 
+            # Any response, even a refusal or invalid JSON, proves the API is up.
+            self._breaker.record_success()
             record.latency_ms = _elapsed_ms(started)
             self._apply_usage(record, response)
 

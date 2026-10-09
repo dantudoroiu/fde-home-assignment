@@ -157,6 +157,68 @@ def test_concurrent_calls_are_capped(settings):
     assert peak == 2
 
 
+def _connection_error():
+    return anthropic.APIConnectionError(request=httpx.Request("POST", "https://x"))
+
+
+def test_breaker_opens_after_repeated_outages_and_stops_calling_the_api(settings):
+    settings.llm_breaker_failure_threshold = 3
+    client, sdk, records = _client(settings, *[_connection_error() for _ in range(3)])
+    for _ in range(3):
+        with pytest.raises(LLMError):
+            _generate(client)
+    assert client.circuit_state == "open"
+
+    with pytest.raises(LLMError) as exc:
+        _generate(client)
+    assert exc.value.kind == "circuit_open"
+    assert len(sdk.requests) == 3  # the 4th call never reached the API
+    assert records[-1].outcome == "circuit_open"
+
+
+def test_calls_queued_during_a_burst_are_stopped_once_the_breaker_opens(settings):
+    # Regression from a live outage simulation: 12 tickets arrived at once, passed the breaker
+    # check while it was closed, queued for the slots, and all called the dead API anyway.
+    settings.llm_max_concurrency = 1
+    settings.llm_breaker_failure_threshold = 1
+    api_calls = 0
+
+    class DeadSDK:
+        def __init__(self):
+            self.beta = SimpleNamespace(messages=SimpleNamespace(create=self._create))
+
+        def _create(self, **request):
+            nonlocal api_calls
+            api_calls += 1
+            time.sleep(0.05)  # the others queue for the single slot meanwhile
+            raise _connection_error()
+
+    client = AnthropicClient(settings, sink=lambda r: None, sdk=DeadSDK())
+
+    def call(_):
+        try:
+            _generate(client)
+        except LLMError as exc:
+            return exc.kind
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        kinds = list(pool.map(call, range(6)))
+
+    assert api_calls == 1
+    assert sorted(kinds) == ["circuit_open"] * 5 + ["connection"]
+
+
+def test_bad_answers_do_not_trip_the_breaker(settings):
+    # Invalid output means the API is up and answering; only availability failures count.
+    settings.llm_breaker_failure_threshold = 2
+    client, _, _ = _client(settings, *[_response(text="not json") for _ in range(4)])
+    for _ in range(2):
+        with pytest.raises(LLMError) as exc:
+            _generate(client)
+        assert exc.value.kind == "invalid_output"
+    assert client.circuit_state == "closed"
+
+
 def test_sonnet_requests_use_refusal_fallback(settings):
     client, sdk, _ = _client(settings, _response(model="claude-sonnet-5-5"))
     _generate(client, model="claude-sonnet-5-5")
